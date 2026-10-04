@@ -1,0 +1,6 @@
+{
+  "name": "Golden Care",
+  "description": "Elderly Care and Health Management System for Pusat Jagaan Warga Emas dan Terapi Fitrah",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
