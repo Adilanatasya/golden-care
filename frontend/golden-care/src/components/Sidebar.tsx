@@ -146,9 +146,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }
       `}
     >
-      {/* =====================================================
-          BRAND HEADER
-      ====================================================== */}
+      {/* BRAND HEADER */}
       <div
         className="
           flex
@@ -194,7 +192,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </p>
         </div>
 
-        {/* Mobile close */}
         <button
           type="button"
           onClick={onClose}
@@ -220,9 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* =====================================================
-          DESKTOP COLLAPSE
-      ====================================================== */}
+      {/* DESKTOP COLLAPSE */}
       <div
         className={`
           hidden
@@ -265,9 +260,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      {/* =====================================================
-          SCROLLABLE NAVIGATION
-      ====================================================== */}
+      {/* SCROLLABLE NAVIGATION */}
       <nav
         className="
           min-h-0
@@ -328,22 +321,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className={labelClass}>Residents Directory</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => handleSelect('add-resident')}
-                className={itemClass('add-resident')}
-                title={isCollapsed ? 'Register Resident' : undefined}
-              >
-                <UserPlus className="h-4 w-4 shrink-0" />
-                <span className={labelClass}>Register Resident</span>
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => handleSelect('add-resident')}
+                  className={itemClass('add-resident')}
+                  title={isCollapsed ? 'Register Resident' : undefined}
+                >
+                  <UserPlus className="h-4 w-4 shrink-0" />
+                  <span className={labelClass}>Register Resident</span>
+                </button>
+              )}
             </div>
           </section>
 
           {/* HEALTH MONITORING */}
           <section>
             <div className={sectionTitleClass}>
-              Health Monitoring 
+              Health Monitoring
             </div>
 
             <div className="space-y-0.5">
@@ -437,54 +432,50 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </section>
 
-          {/* REPORTS & ACCESS */}
-          <section>
-            <div className={sectionTitleClass}>
-              Reports & Access
-            </div>
+          {/* ADMIN REPORTS & ACCESS */}
+          {isAdmin && (
+            <section>
+              <div className={sectionTitleClass}>
+                Reports & Access
+              </div>
 
-            <div className="space-y-0.5">
-              <button
-                type="button"
-                onClick={() => handleSelect('reports')}
-                className={itemClass('reports')}
-                title={isCollapsed ? 'System & PDF Reports' : undefined}
-              >
-                <FileText className="h-4 w-4 shrink-0" />
-                <span className={labelClass}>System & PDF Reports</span>
-              </button>
+              <div className="space-y-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleSelect('reports')}
+                  className={itemClass('reports')}
+                  title={isCollapsed ? 'System & PDF Reports' : undefined}
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className={labelClass}>System & PDF Reports</span>
+                </button>
 
-              {isAdmin && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect('staff-management')}
-                    className={itemClass('staff-management')}
-                    title={isCollapsed ? 'Staff Management' : undefined}
-                  >
-                    <UserCheck className="h-4 w-4 shrink-0" />
-                    <span className={labelClass}>Staff Management</span>
-                  </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelect('staff-management')}
+                  className={itemClass('staff-management')}
+                  title={isCollapsed ? 'Staff Management' : undefined}
+                >
+                  <UserCheck className="h-4 w-4 shrink-0" />
+                  <span className={labelClass}>Staff Management</span>
+                </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelect('telegram-config')}
-                    className={itemClass('telegram-config')}
-                    title={isCollapsed ? 'Telegram Alert Bot' : undefined}
-                  >
-                    <Send className="h-4 w-4 shrink-0" />
-                    <span className={labelClass}>Telegram Alert Bot</span>
-                  </button>
-                </>
-              )}
-            </div>
-          </section>
+                <button
+                  type="button"
+                  onClick={() => handleSelect('telegram-config')}
+                  className={itemClass('telegram-config')}
+                  title={isCollapsed ? 'Telegram Alert Bot' : undefined}
+                >
+                  <Send className="h-4 w-4 shrink-0" />
+                  <span className={labelClass}>Telegram Alert Bot</span>
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </nav>
 
-      {/* =====================================================
-          ACTIVE SESSION / LOGOUT
-      ====================================================== */}
+      {/* ACTIVE SESSION / LOGOUT */}
       <div className="shrink-0 border-t border-slate-800 bg-[#0f172a] p-3">
         <div
           className={`

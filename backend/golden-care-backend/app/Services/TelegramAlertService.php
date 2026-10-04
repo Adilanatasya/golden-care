@@ -91,8 +91,10 @@ class TelegramAlertService
             "{$alertReasonSafe}\n\n" .
 
             "<b>Recorded By</b>\n" .
-            "{$caregiverSafe}\n" .
-            now()->format('d M Y, h:i A') . "\n\n" .
+"{$caregiverSafe}\n" .
+now()
+    ->timezone('Asia/Kuala_Lumpur')
+    ->format('d M Y, h:i A') . "\n\n" .
 
             "<b>Action Required</b>\n" .
             "Please review the resident's condition and take the appropriate action promptly.\n\n" .

@@ -1,10 +1,10 @@
-/**
+/** 
  * Golden Care - Elderly Care Management System
  * Pusat Jagaan Warga Emas dan Terapi Fitrah
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { User, Resident, Vital, Visitor, TelegramAlertLog } from './types';
+import { User, Resident, Vital, Visitor } from './types';
 import { AuthView } from './components/AuthView';
 import { Navbar } from './components/Navbar';
 import { Sidebar, NavView } from './components/Sidebar';
@@ -52,6 +52,14 @@ import {
   updateStaff,
 } from './services/staffService';
 
+const ADMIN_ONLY_VIEWS: NavView[] = [
+  'admin-dashboard',
+  'add-resident',
+  'staff-management',
+  'reports',
+  'telegram-config',
+];
+
 export default function App() {
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -90,6 +98,37 @@ export default function App() {
   useEffect(() => {
     void refreshAdminSummary();
   }, [refreshAdminSummary]);
+
+  // Central role-aware navigation guard.
+  const handleNavigate = (view: NavView) => {
+    if (currentUser?.role !== 'admin' && ADMIN_ONLY_VIEWS.includes(view)) {
+      setSelectedResident(null);
+      setActiveView('caregiver-dashboard');
+      return;
+    }
+
+    setSelectedResident(null);
+
+    if (view === 'record-vitals') {
+      setIsRecordVitalOpen(true);
+      return;
+    }
+
+    setActiveView(view);
+  };
+
+  // Extra safety: if a caregiver somehow lands on an admin-only state,
+  // immediately return them to the caregiver dashboard.
+  useEffect(() => {
+    if (
+      isAuthenticated &&
+      currentUser?.role === 'caregiver' &&
+      ADMIN_ONLY_VIEWS.includes(activeView)
+    ) {
+      setSelectedResident(null);
+      setActiveView('caregiver-dashboard');
+    }
+  }, [activeView, currentUser?.role, isAuthenticated]);
 
   // Load residents from Laravel after a real Sanctum login.
   useEffect(() => {
@@ -213,6 +252,7 @@ export default function App() {
     setCurrentUser(user);
     setAllUsers([user]);
     setIsAuthenticated(true);
+
     if (user.role === 'admin') {
       setActiveView('admin-dashboard');
     } else {
@@ -224,8 +264,6 @@ export default function App() {
     try {
       await logoutUser();
     } catch (error) {
-      // Always finish the local logout, even if the backend is unavailable
-      // or the token has already expired.
       console.error('Laravel logout request failed:', error);
     } finally {
       localStorage.removeItem('auth_token');
@@ -278,7 +316,9 @@ export default function App() {
   };
 
   // Critical Alerts count
-  const activeAlerts = vitals.filter((v) => v.bp_systolic > 140 || v.temperature > 37.5);
+  const activeAlerts = vitals.filter(
+    (v) => v.bp_systolic > 140 || v.temperature > 37.5,
+  );
 
   // Handle new vital submission
   const handleAddVital = async (
@@ -298,6 +338,10 @@ export default function App() {
 
   // Handle new resident registration
   const handleAddResident = async (newRes: ResidentInput): Promise<void> => {
+    if (currentUser?.role !== 'admin') {
+      throw new Error('Only administrators can register residents.');
+    }
+
     const created = await createResident(newRes);
 
     setResidents((prev) =>
@@ -323,17 +367,21 @@ export default function App() {
 
   const handleCheckInVisitor = async (visitorId: number): Promise<void> => {
     const updated = await checkInVisitor(visitorId);
+
     setVisitors((prev) =>
       prev.map((visitor) => (visitor.id === updated.id ? updated : visitor)),
     );
+
     void refreshAdminSummary();
   };
 
   const handleCheckOutVisitor = async (visitorId: number): Promise<void> => {
     const updated = await checkOutVisitor(visitorId);
+
     setVisitors((prev) =>
       prev.map((visitor) => (visitor.id === updated.id ? updated : visitor)),
     );
+
     void refreshAdminSummary();
   };
 
@@ -348,15 +396,16 @@ export default function App() {
     );
   }
 
+  const isAdmin = currentUser.role === 'admin';
+
   return (
     <div className="flex h-screen overflow-hidden flex-col bg-[#f5f6f4] font-sans text-slate-800 antialiased">
-      
       {/* Navbar */}
       <Navbar
         currentUser={currentUser}
         onLogout={handleLogout}
         activeAlertsCount={activeAlerts.length}
-        onOpenAlerts={() => setActiveView('vitals-history')}
+        onOpenAlerts={() => handleNavigate('vitals-history')}
         onToggleSidebar={() => setIsSidebarOpen(true)}
       />
 
@@ -369,19 +418,12 @@ export default function App() {
             aria-label="Close navigation"
           />
         )}
-        
+
         {/* Sidebar */}
         <Sidebar
           currentRole={currentUser.role}
           activeView={activeView}
-          onSelectView={(view) => {
-            setSelectedResident(null);
-            if (view === 'record-vitals') {
-              setIsRecordVitalOpen(true);
-            } else {
-              setActiveView(view);
-            }
-          }}
+          onSelectView={handleNavigate}
           onLogout={handleLogout}
           activeAlertsCount={activeAlerts.length}
           isOpen={isSidebarOpen}
@@ -395,109 +437,109 @@ export default function App() {
         {/* Main Content Stage */}
         <main className="min-h-0 w-full flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <div className="mx-auto w-full max-w-[1500px]">
-          
-          {selectedResident ? (
-            <ResidentProfile
-              resident={selectedResident}
-              vitals={vitals}
-              visitors={visitors}
-              users={allUsers}
-              onBack={() => setSelectedResident(null)}
-              onOpenRecordVital={(resId) => {
-                setVitalTargetResidentId(resId);
-                setIsRecordVitalOpen(true);
-              }}
-              onAddVisitor={handleAddVisitor}
-            />
-          ) : (
-            <>
-              {activeView === 'admin-dashboard' && (
-                <AdminDashboard
-                  residents={residents}
-                  vitals={vitals}
-                  users={allUsers}
-                  summary={adminSummary}
-                  onNavigate={(view) => setActiveView(view)}
-                  onOpenRecordVital={() => setIsRecordVitalOpen(true)}
-                  onOpenAddResident={() => setActiveView('add-resident')}
-                />
-              )}
+            {selectedResident ? (
+              <ResidentProfile
+                resident={selectedResident}
+                vitals={vitals}
+                visitors={visitors}
+                users={allUsers}
+                onBack={() => setSelectedResident(null)}
+                onOpenRecordVital={(resId) => {
+                  setVitalTargetResidentId(resId);
+                  setIsRecordVitalOpen(true);
+                }}
+                onAddVisitor={handleAddVisitor}
+              />
+            ) : (
+              <>
+                {isAdmin && activeView === 'admin-dashboard' && (
+                  <AdminDashboard
+                    residents={residents}
+                    vitals={vitals}
+                    users={allUsers}
+                    summary={adminSummary}
+                    onNavigate={handleNavigate}
+                    onOpenRecordVital={() => setIsRecordVitalOpen(true)}
+                    onOpenAddResident={() => handleNavigate('add-resident')}
+                  />
+                )}
 
-              {activeView === 'caregiver-dashboard' && (
-                <CaregiverDashboard
-                  currentUser={currentUser}
-                  residents={residents}
-                  vitals={vitals}
-                  onOpenRecordVital={() => setIsRecordVitalOpen(true)}
-                  onOpenAddResident={() => setActiveView('add-resident')}
-                  onSelectResident={(res) => setSelectedResident(res)}
-                  onNavigate={(view) => setActiveView(view)}
-                />
-              )}
+                {!isAdmin && activeView === 'caregiver-dashboard' && (
+                  <CaregiverDashboard
+                    currentUser={currentUser}
+                    residents={residents}
+                    vitals={vitals}
+                    onOpenRecordVital={() => setIsRecordVitalOpen(true)}
+                    onSelectResident={(res) => setSelectedResident(res)}
+                    onNavigate={handleNavigate}
+                  />
+                )}
 
-              {activeView === 'residents-list' && (
-                <ResidentList
-                  residents={residents}
-                  currentRole={currentUser.role}
-                  onSelectResident={(res) => setSelectedResident(res)}
-                  onOpenAddModal={() => setActiveView('add-resident')}
-                />
-              )}
+                {activeView === 'residents-list' && (
+                  <ResidentList
+                    residents={residents}
+                    currentRole={currentUser.role}
+                    onSelectResident={(res) => setSelectedResident(res)}
+                    onOpenAddModal={() => handleNavigate('add-resident')}
+                  />
+                )}
 
-              {activeView === 'add-resident' && (
-                <AddResidentView
-                  onAddResident={handleAddResident}
-                  onNavigate={(view) => setActiveView(view)}
-                  onSelectResident={(res) => setSelectedResident(res)}
-                />
-              )}
+                {isAdmin && activeView === 'add-resident' && (
+                  <AddResidentView
+                    onAddResident={handleAddResident}
+                    onNavigate={handleNavigate}
+                    onSelectResident={(res) => setSelectedResident(res)}
+                  />
+                )}
 
-              {activeView === 'vitals-history' && (
-                <VitalsMonitoringView
-                  vitals={vitals}
-                  residents={residents}
-                  users={allUsers}
-                  onOpenRecordVital={(resId) => {
-                    setIsRecordVitalOpen(true);
-                  }}
-                  onSelectResident={(res) => setSelectedResident(res)}
-                />
-              )}
+                {activeView === 'vitals-history' && (
+                  <VitalsMonitoringView
+                    vitals={vitals}
+                    residents={residents}
+                    users={allUsers}
+                    onOpenRecordVital={(resId) => {
+                      setVitalTargetResidentId(resId);
+                      setIsRecordVitalOpen(true);
+                    }}
+                    onSelectResident={(res) => setSelectedResident(res)}
+                  />
+                )}
 
-              {activeView === 'visitor-logs' && (
-                <VisitorLogsView
-                  visitors={visitors}
-                  residents={residents}
-                  onAddVisitor={handleAddVisitor}
-                  onCheckInVisitor={handleCheckInVisitor}
-                  onCheckOutVisitor={handleCheckOutVisitor}
-                />
-              )}
+                {activeView === 'visitor-logs' && (
+                  <VisitorLogsView
+                    visitors={visitors}
+                    residents={residents}
+                    onAddVisitor={handleAddVisitor}
+                    onCheckInVisitor={handleCheckInVisitor}
+                    onCheckOutVisitor={handleCheckOutVisitor}
+                  />
+                )}
 
-              {activeView === 'staff-management' && (
-                <StaffManagementView
-                  users={allUsers}
-                  onAddUser={handleAddStaff}
-                  onUpdateUser={handleUpdateStaff}
-                  onDeleteUser={handleDeleteStaff}
-                />
-              )}
+                {isAdmin && activeView === 'staff-management' && (
+                  <StaffManagementView
+                    users={allUsers}
+                    onAddUser={handleAddStaff}
+                    onUpdateUser={handleUpdateStaff}
+                    onDeleteUser={handleDeleteStaff}
+                  />
+                )}
 
-              {activeView === 'reports' && (
-                <ReportsView
-                  residents={residents}
-                  vitals={vitals}
-                  visitors={visitors}
-                  users={allUsers}
-                  summary={adminSummary}
-                  onSelectResident={(res) => setSelectedResident(res)}
-                />
-              )}
+                {isAdmin && activeView === 'reports' && (
+                  <ReportsView
+                    residents={residents}
+                    vitals={vitals}
+                    visitors={visitors}
+                    users={allUsers}
+                    summary={adminSummary}
+                    onSelectResident={(res) => setSelectedResident(res)}
+                  />
+                )}
 
-              {activeView === 'telegram-config' && <TelegramAlertConfig />}
-            </>
-          )}
-
+                {isAdmin && activeView === 'telegram-config' && (
+                  <TelegramAlertConfig />
+                )}
+              </>
+            )}
           </div>
         </main>
       </div>
@@ -516,14 +558,13 @@ export default function App() {
         />
       )}
 
-      {/* Add Resident Modal */}
-      {isAddResidentOpen && (
+      {/* Add Resident Modal - admin only */}
+      {isAdmin && isAddResidentOpen && (
         <AddResidentModal
           onClose={() => setIsAddResidentOpen(false)}
           onAddResident={handleAddResident}
         />
       )}
-
     </div>
   );
 }
